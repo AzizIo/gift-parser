@@ -6,7 +6,16 @@ class Settings(BaseSettings):
 
     bot_token: str
     admin_id: int
+
+    telegram_api_id: int
+    telegram_api_hash: str
+    telegram_phone: str | None = None
+    telegram_session_path: str = "data/telegram_market"
+
     database_path: str = "data/gift_parser.sqlite3"
+    poll_interval_seconds: int = 45
+    request_delay_seconds: float = 0.25
+    resale_page_size: int = 100
     log_level: str = "INFO"
 
 
