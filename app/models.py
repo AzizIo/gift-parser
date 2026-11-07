@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
@@ -11,6 +11,7 @@ class Seller:
     profile_url: str | None = None
     confidence: str = "unknown"
     evidence: str | None = None
+    wallet_address: str | None = None
 
 
 @dataclass(slots=True)
@@ -27,3 +28,5 @@ class GiftListing:
     pattern: str | None = None
     seller: Seller | None = None
     raw: dict[str, Any] | None = None
+    price_labels: tuple[str, ...] = field(default_factory=tuple)
+    initial_snapshot: bool = False
