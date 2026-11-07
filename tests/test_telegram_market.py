@@ -34,9 +34,10 @@ def test_stars_amount_with_nanos_conversion():
 
 
 def test_ton_nanograms_conversion():
-    ton = SimpleNamespace(amount=1_257_000_000)
-    # Class name is used by the generated TL constructor to distinguish StarsTonAmount.
-    ton.__class__.__name__ = "StarsTonAmount"
+    class StarsTonAmount:
+        amount = 1_257_000_000
+
+    ton = StarsTonAmount()
     assert TelegramMarketSource._format_prices([ton]) == ["1.257 TON"]
 
 
