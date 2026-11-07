@@ -1,20 +1,48 @@
 # Gift Parser
 
-Private Telegram bot project for monitoring Telegram NFT gift listings.
+Private Telegram bot for monitoring collectible gifts listed in Telegram's built-in Gift Market.
 
 ## Current status
 
 - [x] Bot foundation (aiogram 3)
 - [x] SQLite persistence and event deduplication
-- [x] Normalized listing/seller models
-- [x] Notification formatter
-- [ ] Verified Telegram-market event source
-- [ ] Seller resolution with evidence levels
-- [ ] Reconnect recovery and integration tests
+- [x] Official Telegram MTProto resale-market source
+- [x] Gift model/backdrop/pattern and Stars/TON price parsing
+- [x] Seller peer ID / username / name / TON-wallet extraction when Telegram exposes it
+- [x] Silent first scan to avoid flooding the chat with old listings
+- [ ] Live VPS integration test with an authorized user session
+- [ ] Improve coverage beyond the first resale page per gift type
 
-## Setup
+## Source: official Telegram MTProto API
+
+The collector uses two documented Telegram methods:
+
+- `payments.getStarGifts` — discovers base gift types with resale availability.
+- `payments.getResaleStarGifts` — retrieves collectible gifts currently listed for resale for each base gift type.
+
+Important source limitations:
+
+- `payments.getResaleStarGifts` is user-only. A Bot API token is not sufficient; the collector needs a separately authorized Telegram user session.
+- This is snapshot polling, not a Telegram push/WebSocket stream. Results are sorted by most recent resale-price change by default.
+- Telegram provides optional `owner_id`, `owner_name`, and `owner_address` fields. The account ID/username can only be shown when Telegram actually returns a peer. A display name or wallet address is not proof of a Telegram account.
+- The current implementation polls the first page for each gift type. Listings beyond that page are not exhaustively scanned on each cycle. Telegram may also impose flood waits; the client respects them.
+- The first scan on a new database is silent to avoid sending a flood of old active listings.
+
+Official docs:
+- https://core.telegram.org/api/gifts
+- https://core.telegram.org/method/payments.getResaleStarGifts
+- https://docs.telethon.dev/en/stable/basic/signing-in.html
+
+## Requirements
 
 Python 3.11+
+
+## 1. Create Telegram API credentials
+
+Go to https://my.telegram.org → API Development Tools and create an application.
+You need `api_id` and `api_hash`. Keep the hash private.
+
+## 2. Configure
 
 ```bash
 python3 -m venv .venv
@@ -23,35 +51,50 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Fill in `.env`:
+Fill `.env`:
 
 ```env
 BOT_TOKEN=your_bot_token
 ADMIN_ID=your_numeric_telegram_id
+TELEGRAM_API_ID=123456
+TELEGRAM_API_HASH=your_api_hash
+# Optional; if empty, auth command asks interactively.
+TELEGRAM_PHONE=+123456789
 ```
 
-Run:
+## 3. Authorize the user session
+
+```bash
+python -m app.auth
+```
+
+Enter the Telegram login code and 2FA password in the terminal when prompted.
+This creates `data/telegram_market.session`.
+
+**The session file grants access to your Telegram account. Never send it to anyone, commit it, or upload it to a public server.** Keep it on the VPS with restricted file permissions.
+
+## 4. Run the notification bot
 
 ```bash
 python -m app.bot
 ```
 
-Open the bot and send `/start`.
+Open your BotFather-created bot, send `/start`, then use `/status`.
 
-## Important source/API note
+## Configuration
 
-The Telegram Bot API does not provide a public feed of all marketplace listings.
-A marketplace adapter must use a documented/authorized data source. The adapter
-is kept separate so the bot, database, and message format do not depend on a
-particular provider.
+- `POLL_INTERVAL_SECONDS` — minimum pause between full scan cycles (default 45).
+- `REQUEST_DELAY_SECONDS` — pause between gift-type requests (default 0.25).
+- `RESALE_PAGE_SIZE` — first-page size per gift type (default 100).
 
-Before connecting an external data API, verify its current terms. For example,
-the see.tg API documentation describes live listing events and owner-resolution
-methods, but also restricts using the API to build a competing standalone gift
-search/owner-catalog/alert service. This project must not bypass those terms.
+The full scan duration depends on the number of gift types that currently have resale inventory and Telegram rate limits. A requested interval is a target minimum pause after a cycle, not a guaranteed end-to-end latency.
 
 ## Seller identity
 
-Seller data is represented with a confidence/evidence field. A display-name
-match alone is not proof of identity. If a source hides the account or does not
-expose a Telegram ID/username, the bot reports it as unknown instead of guessing.
+Seller resolution uses only data returned by Telegram itself:
+
+- `owner_id` + returned user/chat data: Telegram peer ID, with username/profile link when available.
+- `owner_name` without `owner_id`: display name only; no account is guessed.
+- `owner_address`: TON wallet address, not a Telegram user ID.
+
+The collector does not try to bypass Telegram privacy controls or infer identity from a name match.
