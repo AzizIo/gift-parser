@@ -17,5 +17,7 @@ jobs:
           cache: "pip"
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Compile Python modules
+        run: python -m compileall -q app config.py
       - name: Run unit tests
         run: pytest -q
