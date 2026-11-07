@@ -27,6 +27,11 @@ class Database:
             """)
             await db.commit()
 
+    async def is_empty(self) -> bool:
+        async with aiosqlite.connect(self.path) as db:
+            cursor = await db.execute("SELECT 1 FROM listings LIMIT 1")
+            return await cursor.fetchone() is None
+
     async def has_event(self, event_id: str) -> bool:
         async with aiosqlite.connect(self.path) as db:
             cursor = await db.execute(
