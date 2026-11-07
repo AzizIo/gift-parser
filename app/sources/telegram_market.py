@@ -171,11 +171,11 @@ class TelegramMarketSource(MarketplaceSource):
             raw_amount = int(getattr(amount, "amount", 0) or 0)
             if "ton" in class_name:
                 value = Decimal(raw_amount) / Decimal(1_000_000_000)
-                labels.append(f"{value.normalize()} TON")
+                labels.append(f"{format(value.normalize(), 'f')} TON")
             else:
                 nanos = int(getattr(amount, "nanos", 0) or 0)
                 value = Decimal(raw_amount) + Decimal(nanos) / Decimal(1_000_000_000)
-                labels.append(f"{value.normalize()} Stars")
+                labels.append(f"{format(value.normalize(), 'f')} Stars")
         return labels
 
     @staticmethod
@@ -197,7 +197,7 @@ class TelegramMarketSource(MarketplaceSource):
         permille = getattr(rarity, "permille", None)
         if permille is not None:
             percentage = Decimal(int(permille)) / Decimal(10)
-            return f"{percentage.normalize()}%"
+            return f"{format(percentage.normalize(), 'f')}%"
         name = type(rarity).__name__.replace("StarGiftAttributeRarity", "")
         return name
 
