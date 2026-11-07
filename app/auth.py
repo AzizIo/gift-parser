@@ -17,7 +17,7 @@ async def main() -> None:
         settings.telegram_api_hash,
     )
     try:
-        await client.start(phone=settings.telegram_phone)
+        await client.start(phone=settings.telegram_phone or None)
         me = await client.get_me()
         print(f"MTProto авторизован: id={me.id}, username=@{me.username or 'нет username'}")
         print(f"Файл сессии: {settings.telegram_session_path}.session")
