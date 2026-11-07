@@ -1,5 +1,6 @@
 import asyncio
 import logging
+
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -19,6 +20,7 @@ async def main() -> None:
     dp = Dispatcher()
     db = Database(settings.database_path)
     await db.initialize()
+    state = {"collector": "starting", "last_error": None}
 
     def is_admin(message: Message) -> bool:
         return bool(message.from_user and message.from_user.id == settings.admin_id)
@@ -28,8 +30,8 @@ async def main() -> None:
         if not is_admin(message):
             return
         await message.answer(
-            "👋 <b>Gift Parser</b>\n"
-            "Бот создан. Источник объявлений пока не подключён.\n"
+            "👋 <b>Gift Parser</b> запущен.\n"
+            "Источник: официальный Telegram Gift Market API (MTProto).\n"
             "/status — состояние парсера"
         )
 
@@ -37,27 +39,38 @@ async def main() -> None:
     async def status(message: Message) -> None:
         if not is_admin(message):
             return
+        error = f"\nПоследняя ошибка: <code>{state['last_error']}</code>" if state["last_error"] else ""
         await message.answer(
-            "🟡 Бот запущен, но источник Telegram Market ещё не настроен.\n"
-            "Не отправляю выдуманные объявления или неподтверждённых владельцев."
+            f"Сборщик: <b>{state['collector']}</b>\n"
+            f"Интервал опроса: {settings.poll_interval_seconds} сек."
+            f"{error}"
         )
 
     async def collect() -> None:
-        source = TelegramMarketSource()
+        first_run = await db.is_empty()
         while True:
+            source = TelegramMarketSource(silent_initial_snapshot=first_run)
             try:
+                state["collector"] = "connecting"
+                state["last_error"] = None
                 async for listing in source.listen():
-                    if await db.save_listing(listing):
+                    inserted = await db.save_listing(listing)
+                    if inserted and not listing.initial_snapshot:
                         await bot.send_message(
                             settings.admin_id,
                             format_listing(listing),
                             disable_web_page_preview=True,
                         )
+                first_run = False
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception as exc:
+                state["collector"] = "reconnecting"
+                state["last_error"] = str(exc)[:300]
                 logging.exception("Collector stopped")
-                await asyncio.sleep(5)
+                await asyncio.sleep(10)
+            else:
+                first_run = False
 
     collector_task = asyncio.create_task(collect())
     try:
