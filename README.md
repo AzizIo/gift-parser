@@ -73,7 +73,23 @@ This creates `data/telegram_market.session`.
 
 **The session file grants access to your Telegram account. Never send it to anyone, commit it, or upload it to a public server.** Keep it on the VPS with restricted file permissions.
 
-## 4. Run the notification bot
+## 4. Check owner visibility from your own Telegram session
+
+Run a small read-only sample against the current MTProto API:
+
+```bash
+python -m app.diagnostics
+```
+
+It reports only counts and public gift slugs. It does not print Telegram IDs,
+usernames, names, phone numbers, session data, or API credentials. In
+particular, it distinguishes listings where Telegram returned `owner_id`,
+`owner_name` only, or a TON `owner_address`.
+
+This is the practical check for whether the October 22 public-page privacy
+change is also reflected in MTProto responses for your account.
+
+## 5. Run the notification bot
 
 ```bash
 python -m app.bot
