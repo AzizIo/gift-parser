@@ -3,7 +3,6 @@ from types import SimpleNamespace
 
 from telethon import functions
 
-from app.models import Seller
 from app.sources.telegram_market import TelegramMarketSource
 
 
@@ -21,6 +20,11 @@ def test_telethon_resale_request_is_available_and_constructible():
 def test_telethon_gift_catalog_request_is_available_and_constructible():
     request = functions.payments.GetStarGiftsRequest(hash=0)
     assert request.hash == 0
+
+
+def test_telethon_unique_star_gift_request_is_available_and_constructible():
+    request = functions.payments.GetUniqueStarGiftRequest(slug="SnoopDogg-287396")
+    assert request.slug == "SnoopDogg-287396"
 
 
 def test_stars_amount_conversion():
